@@ -1,0 +1,43 @@
+name: Git Diff Analysis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Important for git history
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          # When used in other repositories, you would use:
+          # npm install ci-cd-git-diff-analyzer
+
+      - name: Run Git Diff Analyzer
+        id: git-diff
+        run: node index.js --diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show diff results
+        run: |
+          echo "Diff results saved to: ${{ steps.git-diff.outputs.diff_output_path }}"
+          echo "Changes detected: ${{ steps.git-diff.outputs.diff_found }}"
+          
+          # Example of analyzing the diff
+          echo "Files changed in this commit/PR:"
+          cat git-diff-output.txt | grep "^diff --git" | awk '{print $3}' | sort

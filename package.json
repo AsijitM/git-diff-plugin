@@ -1,18 +1,41 @@
 {
   "name": "ci-cd-git-diff-analyzer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "git-diff-analyzer": "./index.js"
   },
-  "keywords": [],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "diff": "node index.js --diff",
+    "commit": "node index.js --commit"
+  },
+  "keywords": [
+    "git",
+    "diff",
+    "analyzer",
+    "ci",
+    "cd",
+    "github-actions",
+    "ci-cd",
+    "devops"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A tool to analyze git diffs and commit details for CI/CD workflows, with special support for GitHub Actions",
   "dependencies": {
     "axios": "^1.9.0",
     "commander": "^13.1.0",
     "dotenv": "^16.5.0",
     "simple-git": "^3.27.0"
-  }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AsijitM/ci-cd-git-diff-analyzer"
+  },
+  "homepage": "https://github.com/AsijitM/ci-cd-git-diff-analyzer#readme"
 }

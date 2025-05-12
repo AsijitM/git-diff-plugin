@@ -1,0 +1,77 @@
+name: Example CI/CD Workflow with Git Diff Analyzer
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      diff_found: ${{ steps.git-diff.outputs.diff_found }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Important: fetch all history for accurate diffs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install git-diff-analyzer
+        run: npm install -g ci-cd-git-diff-analyzer
+
+      - name: Run Git Diff Analyzer
+        id: git-diff
+        run: git-diff-analyzer --diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload diff as artifact
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: git-diff-output
+          path: git-diff-output.txt
+
+  conditionally-run-tests:
+    needs: analyze-changes
+    runs-on: ubuntu-latest
+    if: needs.analyze-changes.outputs.diff_found == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download diff artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: git-diff-output
+
+      - name: Check for specific file changes
+        id: check-changes
+        run: |
+          if grep -q "src/" git-diff-output.txt; then
+            echo "src_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "src_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -q "test/" git-diff-output.txt; then
+            echo "tests_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "tests_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run tests
+        if: steps.check-changes.outputs.src_changed == 'true'
+        run: npm test
