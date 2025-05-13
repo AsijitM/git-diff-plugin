@@ -1,0 +1,48 @@
+# Example GitHub Actions workflow for ci-cd-git-diff-analyzer
+name: CI/CD with Git Diff Analysis
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Important for git history
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install ci-cd-git-diff-analyzer
+
+      - name: Run Git Diff Analyzer
+        id: git-diff
+        run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Example of using the output in a subsequent step
+      - name: Process git diff results
+        if: success()
+        run: |
+          echo "Diff output file: ${{ steps.git-diff.outputs.diff_output_path }}"
+          echo "Diff found: ${{ steps.git-diff.outputs.diff_found }}"
+
+          # Example: Check if specific files were changed
+          if grep -q "package.json" git-diff-output.txt; then
+            echo "📦 package.json was modified"
+            # You could run npm install here
+          fi
+
+          if grep -q "src/" git-diff-output.txt; then
+            echo "🔄 Source code was modified"
+            # You could run tests here
+          fi

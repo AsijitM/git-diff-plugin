@@ -32,6 +32,15 @@ const BRANCH = process.env.BRANCH || process.env.GITHUB_REF_NAME || 'main';
 console.log(`🔑 GitHub Token : ${GITHUB_TOKEN ? '***' : 'Not provided'}`);
 console.log(`📁 Repository: ${REPO_OWNER}/${REPO_NAME} (${BRANCH})`);
 
+// Files to ignore in git diff
+const IGNORED_FILES = [
+  '.gitignore',
+  'package-lock.json',
+  'package.json',
+];
+
+console.log(`🔇 Ignoring files: ${IGNORED_FILES.join(', ')}`);
+
 // Find the correct git repository path
 function findGitRoot() {
     if (isCI) {
@@ -172,7 +181,44 @@ async function run() {
     try {
         if (options.diff) {
             console.log("➡️ Running: getGitDiff");
-            const diffResult = await getGitDiff();
+            let diffResult = await getGitDiff();
+
+            // Filter out ignored files from the diff
+            if (diffResult) {
+                // Process the diff to filter out ignored files
+                const diffLines = diffResult.split('\n');
+                let filteredLines = [];
+                let skipSection = false;
+
+                for (let i = 0; i < diffLines.length; i++) {
+                    const line = diffLines[i];
+
+                    // Check if this line starts a new file diff
+                    if (line.startsWith('diff --git')) {
+                        // Extract the filename (after "b/")
+                        const filePath = line.split(' b/')[1];
+
+                        // Check if this file should be ignored
+                        skipSection = IGNORED_FILES.some(ignoredFile =>
+                            filePath === ignoredFile ||
+                            filePath.endsWith(`/${ignoredFile}`) ||
+                            filePath.startsWith(`${ignoredFile}/`)
+                        );
+
+                        if (!skipSection) {
+                            filteredLines.push(line);
+                        } else {
+                            console.log(`🔇 Ignoring changes in: ${filePath}`);
+                        }
+                    } else if (!skipSection) {
+                        filteredLines.push(line);
+                    }
+                }
+
+                // Join the filtered lines back into a string
+                diffResult = filteredLines.join('\n');
+                console.log('🔍 Filtered diff to exclude ignored files');
+            }
 
             // In CI environments, write the diff to a file for easier consumption by other steps
             if (isCI && diffResult) {

@@ -1,0 +1,152 @@
+name: Advanced CI/CD with Git Diff Analysis
+
+on:
+  push:
+    branches: [ main, develop, release/* ]
+  pull_request:
+    branches: [ main, develop, release/* ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_changed: ${{ steps.check-changes.outputs.frontend_changed }}
+      backend_changed: ${{ steps.check-changes.outputs.backend_changed }}
+      docs_changed: ${{ steps.check-changes.outputs.docs_changed }}
+      tests_changed: ${{ steps.check-changes.outputs.tests_changed }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install ci-cd-git-diff-analyzer
+
+      - name: Run Git Diff Analyzer
+        id: git-diff
+        run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check what changed
+        id: check-changes
+        run: |
+          # Check for frontend changes
+          if grep -q "src/frontend\|src/components\|src/pages" git-diff-output.txt; then
+            echo "frontend_changed=true" >> $GITHUB_OUTPUT
+            echo "🖥️ Frontend code changed"
+          else
+            echo "frontend_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for backend changes
+          if grep -q "src/backend\|src/api\|src/server" git-diff-output.txt; then
+            echo "backend_changed=true" >> $GITHUB_OUTPUT
+            echo "🔌 Backend code changed"
+          else
+            echo "backend_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for documentation changes
+          if grep -q "docs/\|README.md\|CONTRIBUTING.md" git-diff-output.txt; then
+            echo "docs_changed=true" >> $GITHUB_OUTPUT
+            echo "📝 Documentation changed"
+          else
+            echo "docs_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check for test changes
+          if grep -q "tests/\|__tests__/\|spec.js\|test.js" git-diff-output.txt; then
+            echo "tests_changed=true" >> $GITHUB_OUTPUT
+            echo "🧪 Tests changed"
+          else
+            echo "tests_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Frontend job that only runs if frontend code changed
+  frontend:
+    needs: analyze
+    if: needs.analyze.outputs.frontend_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint Frontend
+        run: npm run lint:frontend
+
+      - name: Test Frontend
+        run: npm run test:frontend
+
+      - name: Build Frontend
+        run: npm run build:frontend
+
+  # Backend job that only runs if backend code changed
+  backend:
+    needs: analyze
+    if: needs.analyze.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint Backend
+        run: npm run lint:backend
+
+      - name: Test Backend
+        run: npm run test:backend
+
+      - name: Build Backend
+        run: npm run build:backend
+
+  # Deploy job that only runs if the branch is main and either frontend or backend changed
+  deploy:
+    needs: [analyze, frontend, backend]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (needs.analyze.outputs.frontend_changed == 'true' || needs.analyze.outputs.backend_changed == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+
+      - name: Deploy to production
+        run: npm run deploy
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

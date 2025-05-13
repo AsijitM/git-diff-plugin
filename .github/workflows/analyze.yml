@@ -37,7 +37,7 @@ jobs:
         run: |
           echo "Diff results saved to: ${{ steps.git-diff.outputs.diff_output_path }}"
           echo "Changes detected: ${{ steps.git-diff.outputs.diff_found }}"
-          
+
           # Example of analyzing the diff
           echo "Files changed in this commit/PR:"
           cat git-diff-output.txt | grep "^diff --git" | awk '{print $3}' | sort

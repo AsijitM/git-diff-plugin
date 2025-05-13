@@ -51,6 +51,24 @@ node index.js --commit
 git-diff-analyzer --commit
 ```
 
+### Ignoring Files
+
+The tool automatically ignores certain files that are commonly not relevant for CI/CD decisions:
+
+```javascript
+// Files ignored by default
+const IGNORED_FILES = [
+  '.github/workflows/CD',
+  '.gitignore',
+  'extract_tags.js',
+  'package-lock.json',
+  'package.json',
+  'sample_test.js'
+];
+```
+
+You can customize this list by modifying the `IGNORED_FILES` array in the `index.js` file.
+
 ### Usage in CI/CD (GitHub Actions)
 
 Add the following to your workflow YAML file:
@@ -85,7 +103,7 @@ jobs:
         run: |
           echo "Diff found: ${{ steps.git-diff.outputs.diff_found }}"
           echo "Diff output saved to: ${{ steps.git-diff.outputs.diff_output_path }}"
-          
+
           # Example: only run certain steps if changes to specific files
           if grep -q "src/api" git-diff-output.txt; then
             echo "API changes detected"
@@ -122,23 +140,23 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          
+
       - name: Install dependencies
         run: |
           npm ci
           npm install ci-cd-git-diff-analyzer
-          
+
       - name: Run Git Diff Analyzer
         id: git-diff
         run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       # Conditional frontend testing
       - name: Frontend Tests
         if: success()
@@ -149,7 +167,7 @@ jobs:
           else
             echo "No frontend changes detected, skipping frontend tests"
           fi
-          
+
       # Conditional backend testing
       - name: Backend Tests
         if: success()
@@ -180,27 +198,27 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          
+
       - name: Install dependencies
         run: npm install ci-cd-git-diff-analyzer
-          
+
       - name: Analyze Commit Details
         id: commit-details
         run: node node_modules/ci-cd-git-diff-analyzer/index.js --commit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
       # Deploy based on commit message
       - name: Conditional Deployment
         if: success()
         run: |
           COMMIT_MSG=$(cat commit-details.json | jq -r '.commit.message')
-          
+
           if [[ "$COMMIT_MSG" == *"[deploy]"* ]]; then
             echo "Deployment trigger found in commit message!"
             # Deployment commands here
@@ -221,7 +239,7 @@ const { getGitDiff, fetchCommitDetails } = require('ci-cd-git-diff-analyzer');
 async function run() {
   // Get git diff between last two commits
   const diff = await getGitDiff();
-  
+
   if (diff && diff.includes('package.json')) {
     console.log('Dependencies may have changed!');
     // Run npm install
@@ -229,7 +247,7 @@ async function run() {
 
   // Fetch commit details from GitHub
   const commitDetails = await fetchCommitDetails();
-  
+
   if (commitDetails && commitDetails.commit.message.includes('[important]')) {
     console.log('Important commit detected!');
     // Take special actions
