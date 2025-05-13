@@ -49,6 +49,11 @@ git-diff-analyzer --diff
 node index.js --commit
 # OR if installed globally
 git-diff-analyzer --commit
+
+# Show the full diff output in the console
+node index.js --diff --verbose
+# OR if installed globally
+git-diff-analyzer --diff --verbose
 ```
 
 ### Ignoring Files

@@ -34,9 +34,12 @@ console.log(`📁 Repository: ${REPO_OWNER}/${REPO_NAME} (${BRANCH})`);
 
 // Files to ignore in git diff
 const IGNORED_FILES = [
+  '.github/workflows/CD',
   '.gitignore',
+  'extract_tags.js',
   'package-lock.json',
   'package.json',
+  'sample_test.js'
 ];
 
 console.log(`🔇 Ignoring files: ${IGNORED_FILES.join(', ')}`);
@@ -97,7 +100,7 @@ async function getGitDiff() {
                             return await git.diff();
                         }
                     );
-                    console.log('🔍 Git Diff (PR):\n', diff);
+                    console.log('🔍 Git Diff obtained (PR - not shown here to reduce console output)');
                     return diff;
                 }
 
@@ -106,12 +109,12 @@ async function getGitDiff() {
                     console.log('📋 Push event detected, checking available commits...');
                     await git.fetch(['--unshallow']).catch(e => console.log('Repository might already be complete, continuing...'));
                     const diff = await git.diff(['HEAD~1', 'HEAD']);
-                    console.log('🔍 Git Diff (push event):\n', diff);
+                    console.log('🔍 Git Diff obtained (push event - not shown here to reduce console output)');
                     return diff;
                 } catch (e) {
                     console.log('⚠️ Failed to get standard diff, trying to show last commit changes...');
                     const diff = await git.show(['HEAD']);
-                    console.log('🔍 Git Diff (last commit):\n', diff);
+                    console.log('🔍 Git Diff obtained (last commit - not shown here to reduce console output)');
                     return diff;
                 }
             }
@@ -132,13 +135,13 @@ async function getGitDiff() {
             console.log('ℹ️ Only one commit found, showing changes in that commit');
             const hash = log.all[0].hash;
             const diff = await git.show([hash]);
-            console.log('🔍 Git Diff (first commit):\n', diff);
+            console.log('🔍 Git Diff obtained (first commit - not shown here to reduce console output)');
             return diff;
         } else {
             // More than one commit, get diff between the last two
             console.log('ℹ️ Multiple commits found, showing diff between the last two');
             const diff = await git.diff(['HEAD~1', 'HEAD']);
-            console.log('🔍 Git Diff:\n', diff);
+            console.log('🔍 Git Diff obtained (not shown here to reduce console output)');
             return diff;
         }
     } catch (error) {
@@ -172,6 +175,7 @@ program
     .version('1.0.0')
     .option('-d, --diff', 'Fetch Git Diff')
     .option('-c, --commit', 'Fetch Commit Details')
+    .option('-v, --verbose', 'Show verbose output including full diff')
     .parse();
 
 const options = program.opts();
@@ -189,26 +193,34 @@ async function run() {
                 const diffLines = diffResult.split('\n');
                 let filteredLines = [];
                 let skipSection = false;
+                let currentFilePath = null;
 
                 for (let i = 0; i < diffLines.length; i++) {
                     const line = diffLines[i];
 
                     // Check if this line starts a new file diff
                     if (line.startsWith('diff --git')) {
-                        // Extract the filename (after "b/")
-                        const filePath = line.split(' b/')[1];
+                        // Extract the filename without "a/" or "b/" prefix
+                        const filePathMatch = line.match(/diff --git a\/(.*) b\/(.*)/);
+                        if (filePathMatch && filePathMatch.length >= 3) {
+                            currentFilePath = filePathMatch[2]; // Use the b/ path as current
 
-                        // Check if this file should be ignored
-                        skipSection = IGNORED_FILES.some(ignoredFile =>
-                            filePath === ignoredFile ||
-                            filePath.endsWith(`/${ignoredFile}`) ||
-                            filePath.startsWith(`${ignoredFile}/`)
-                        );
+                            // Check if this file should be ignored
+                            skipSection = IGNORED_FILES.some(ignoredFile => {
+                                return currentFilePath === ignoredFile ||
+                                       currentFilePath.endsWith(`/${ignoredFile}`) ||
+                                       currentFilePath.startsWith(`${ignoredFile}/`);
+                            });
 
-                        if (!skipSection) {
-                            filteredLines.push(line);
+                            if (!skipSection) {
+                                filteredLines.push(line);
+                            } else {
+                                console.log(`🔇 Ignoring changes in: ${currentFilePath}`);
+                            }
                         } else {
-                            console.log(`🔇 Ignoring changes in: ${filePath}`);
+                            // If we can't parse the file path for some reason, include it to be safe
+                            filteredLines.push(line);
+                            skipSection = false;
                         }
                     } else if (!skipSection) {
                         filteredLines.push(line);
@@ -218,6 +230,11 @@ async function run() {
                 // Join the filtered lines back into a string
                 diffResult = filteredLines.join('\n');
                 console.log('🔍 Filtered diff to exclude ignored files');
+
+                // Show the filtered diff if verbose mode is enabled
+                if (options.verbose) {
+                    console.log('📋 Filtered Git Diff:\n', diffResult);
+                }
             }
 
             // In CI environments, write the diff to a file for easier consumption by other steps
