@@ -1,6 +1,6 @@
 {
   "name": "ci-cd-git-diff-analyzer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "main": "index.js",
   "bin": {
     "git-diff-analyzer": "./index.js"
