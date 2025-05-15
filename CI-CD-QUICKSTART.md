@@ -41,9 +41,13 @@ jobs:
 
       - name: Run Git Diff Analyzer
         id: git-diff
-        run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+        run: npx git-diff-analyzer --diff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Alternative options:
+      # Using full path: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+      # Using shorter alias: npx gda --diff
 
       # Use the output in subsequent steps
       - name: Conditional testing

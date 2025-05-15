@@ -23,11 +23,26 @@ jobs:
       - name: Install dependencies
         run: npm install ci-cd-git-diff-analyzer
 
-      - name: Run Git Diff Analyzer
+      # Option 1: Using npx (recommended)
+      - name: Run Git Diff Analyzer with npx
         id: git-diff
-        run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+        run: npx git-diff-analyzer --diff
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 2: Using full path to index.js
+      # - name: Run Git Diff Analyzer with full path
+      #   id: git-diff
+      #   run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 3: Using shorter alias (if available in the package)
+      # - name: Run Git Diff Analyzer with alias
+      #   id: git-diff
+      #   run: npx gda --diff
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Example of using the output in a subsequent step
       - name: Process git diff results

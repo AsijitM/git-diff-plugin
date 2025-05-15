@@ -44,11 +44,20 @@ BRANCH=main
 node index.js --diff
 # OR if installed globally
 git-diff-analyzer --diff
+# OR using the shorter alias
+gda --diff
+
+# Using npx (without installing globally)
+npx git-diff-analyzer --diff
+# OR using the shorter alias with npx
+npx gda --diff
 
 # Fetch commit details from GitHub
 node index.js --commit
 # OR if installed globally
 git-diff-analyzer --commit
+# OR using npx
+npx git-diff-analyzer --commit
 
 # Show the full diff output in the console
 node index.js --diff --verbose
@@ -96,9 +105,26 @@ jobs:
       - name: Install dependencies
         run: npm install ci-cd-git-diff-analyzer
 
+      # Option 1: Using npx (recommended)
       - name: Analyze Git Diff
         id: git-diff
-        run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+        run: npx git-diff-analyzer --diff
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 2: Using full path (alternative)
+      # - name: Analyze Git Diff
+      #   id: git-diff
+      #   run: node node_modules/ci-cd-git-diff-analyzer/index.js --diff
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Option 3: Using shorter alias (alternative)
+      # - name: Analyze Git Diff
+      #   id: git-diff
+      #   run: npx gda --diff
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
